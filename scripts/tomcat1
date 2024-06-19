@@ -1,0 +1,145 @@
+#!/bin/sh
+
+#
+# /etc/init.d/tomcat
+#
+# Startup script for Apache Tomcat Servlet Engine.
+#
+# Author: Mariano Ruiz <mrsarm@gmail.com> (2012)
+#
+
+### BEGIN INIT INFO
+# Provides: tomcat
+# Required-Start:
+# Required-Stop:
+# Default-Start: 2 3 5
+# Default-Stop:  0 1 6
+# Short-Description: Startup script for Tomcat Servlet Engine.
+### END INIT INFO
+
+
+
+# Install this service with:
+#   insserv -d tomcat                                     -> SUSE
+#   update-rc.d tomcat defaults                           -> Debian
+#   update-rc.d tomcat start 20 2 3 5 . stop 20 0 1 6 .   -> Debian
+#   systemctl enable tomcat                               -> Modern Ubuntu
+#   chkconfig --level 235 tomcat on                       -> Other distros
+#
+# Uninstall this service with:
+#   insserv -r tomcat                                     -> SUSE
+#   update-rc.d -f tomcat remove                          -> Debian
+#   systemctl disable tomcat                              -> Modern Ubuntu
+#   chkconfig --level 235 tomcat off                      -> Other distros
+
+
+# Tomcat installation directory
+CATALINA_HOME="/home/manish/jenkins/tomcat1"
+
+# Java installation directories
+#JAVA_HOME="$JAVA_HOME"
+#JRE_HOME="$JRE_HOME"
+#CLASSPATH="$CLASSPATH"
+
+# User under which tomcat will run, if "" use current user
+TOMCAT_USER="manish"
+
+# Tomcat Shutdown port number
+SHUTDOWN_PORT="8005"
+
+# Tomcat JPDA port number
+JPDA_PORT="8000"
+
+RETVAL=0
+
+#LISTEN_LABEL="ESCUCHAR"
+LISTEN_LABEL="LISTEN"
+SHUTDOWN_STATUS=`netstat -vatn | grep $LISTEN_LABEL | grep $SHUTDOWN_PORT | wc -l`
+JPDA_STATUS=`netstat -vatn | grep $LISTEN_LABEL | grep $JPDA_PORT | wc -l`
+
+
+start() {
+    # Start Tomcat in normal mode
+    if [ $SHUTDOWN_STATUS -ne 0 ]; then
+        echo "Tomcat already started"
+    else
+        echo "Starting tomcat..."
+        if [ "$TOMCAT_USER" = "" -o "$TOMCAT_USER" = "$USER" ]; then
+            $CATALINA_HOME'/bin/startup.sh'
+        else
+            su -l $TOMCAT_USER -c $CATALINA_HOME'/bin/startup.sh'
+        fi
+        while [ $SHUTDOWN_STATUS -ne 0 ]; do
+            sleep 1
+        done    
+        RETVAL=$?
+        echo "Tomcat started in normal mode"
+    fi
+}
+
+debug() {
+    # Start Tomcat in debug mode
+    if [ $SHUTDOWN_STATUS -ne 0 ]; then
+        echo "Tomcat already started"
+    else
+        echo "Starting tomcat in debug mode..."
+        if [ "$TOMCAT_USER" = "" -o "$TOMCAT_USER" = "$USER" ]; then
+            $CATALINA_HOME'/bin/catalina.sh' jpda start
+        else
+            su -l $TOMCAT_USER -c $CATALINA_HOME'/bin/catalina.sh jpda start'
+        fi
+        while [ $JPDA_STATUS -ne 0 ]; do
+            sleep 1
+        done    
+        RETVAL=$?
+        echo "Tomcat started in debug mode"
+    fi
+}
+
+stop() {
+    if [ $SHUTDOWN_STATUS -eq 0 ]; then
+        echo "Tomcat already stopped"
+    else
+        echo "Stopping tomcat..."
+        if [ "$TOMCAT_USER" = "" -o "$TOMCAT_USER" = "$USER" ]; then
+            $CATALINA_HOME'/bin/shutdown.sh'
+        else
+            su -l $TOMCAT_USER -c $CATALINA_HOME'/bin/shutdown.sh'
+        fi
+        while [ $SHUTDOWN_STATUS -eq 0 ]; do
+            sleep 1
+        done
+    fi
+}
+
+status() {
+    if [ $SHUTDOWN_STATUS -eq 0 ]; then
+        echo "Tomcat stopped"
+    else
+        MODE="normal"
+        if [ $JPDA_STATUS -ne 0 ]; then
+            MODE="debug"
+        fi
+    echo "Tomcat running in $MODE mode"
+    fi
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  debug)
+    debug
+    ;;
+  stop)
+    stop
+    ;;
+  status)
+    status
+    ;;
+  *)
+    echo "Usage: $0 {start|debug|stop|status}"
+    exit 1
+esac
+
+exit $RETVAL
