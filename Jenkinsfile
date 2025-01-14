@@ -3,7 +3,7 @@ pipeline {
     tools {
       jdk 'Java21'
       maven 'Maven3'
-    }
+}
      stages {
          stage("Cleanup Workspace"){
                 steps {
@@ -20,11 +20,11 @@ pipeline {
                  sh "mvn clean package"
               }
          }
-         stage{"Test Application"}
+         stage("Test Application"){
                 steps {
                     sh "mvn test"
          }
 
-       }
-    }
+      }
+   }
 }
