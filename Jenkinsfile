@@ -1,7 +1,6 @@
 pipeline {
     agent { label 'ubuntu-vm1-jenkins-agent' }
     tools {
-      jdk 'Java21'
       maven 'Maven3'
 }
      stages {
